@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.session import get_db
+from db.session import get_async_db
 from db.repository.submissions import (
     create_submission,
     get_submission_by_token,
@@ -16,13 +16,13 @@ from db.repository.submissions import (
     create_submission_batch,
     get_submission_batch_by_token,
 )
-from core.queue import enqueue_submission
 from schema.submission import (
     SubmissionCreate,
     SubmissionResponse,
     SubmissionBatchCreate,
     SubmissionBatchResponse,
 )
+from worker.tasks import process_submission
 
 
 router = APIRouter(prefix="/submissions", tags=["Submissions"])
@@ -63,23 +63,11 @@ def _row_to_response(row) -> SubmissionResponse:
 @router.post("", response_model=SubmissionResponse, status_code=201)
 async def create_submission_endpoint(
     body: SubmissionCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Create a new submission and enqueue it for processing."""
     row = await create_submission(db, body)
-    enqueue_submission(str(row.token))
-    return _row_to_response(row)
-
-
-@router.get("/{token}", response_model=SubmissionResponse)
-async def get_submission_endpoint(
-    token: UUID,
-    db: AsyncSession = Depends(get_db),
-):
-    """Retrieve a submission by its token."""
-    row = await get_submission_by_token(db, token)
-    if not row:
-        raise HTTPException(status_code=404, detail="Submission not found")
+    process_submission.delay(str(row.token))
     return _row_to_response(row)
 
 
@@ -87,34 +75,22 @@ async def get_submission_endpoint(
 async def get_submissions_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """List submissions with pagination."""
     rows = await get_submissions(db, page=page, per_page=per_page)
     return [_row_to_response(r) for r in rows]
 
 
-@router.delete("/{token}", status_code=204)
-async def delete_submission_endpoint(
-    token: UUID,
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a submission by its token."""
-    deleted = await delete_submission(db, token)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Submission not found")
-    return None
-
-
 @router.post("/batch", response_model=SubmissionBatchResponse, status_code=201)
 async def create_submission_batch_endpoint(
     body: SubmissionBatchCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Create a batch of submissions and enqueue them all for processing."""
     batch = await create_submission_batch(db, body.submissions)
     for sub in batch.submissions:
-        enqueue_submission(str(sub.token))
+        process_submission.delay(str(sub.token))
     return SubmissionBatchResponse(
         token=batch.token,
         submissions=[_row_to_response(s) for s in batch.submissions],
@@ -124,7 +100,7 @@ async def create_submission_batch_endpoint(
 @router.get("/batch/{token}", response_model=SubmissionBatchResponse)
 async def get_submission_batch_endpoint(
     token: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Retrieve a submission batch and all its submissions."""
     batch = await get_submission_batch_by_token(db, token)
@@ -134,3 +110,27 @@ async def get_submission_batch_endpoint(
         token=batch.token,
         submissions=[_row_to_response(s) for s in batch.submissions],
     )
+
+
+@router.get("/{token}", response_model=SubmissionResponse)
+async def get_submission_endpoint(
+    token: UUID,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Retrieve a submission by its token."""
+    row = await get_submission_by_token(db, token)
+    if not row:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return _row_to_response(row)
+
+
+@router.delete("/{token}", status_code=204)
+async def delete_submission_endpoint(
+    token: UUID,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Delete a submission by its token."""
+    deleted = await delete_submission(db, token)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return None

@@ -1,28 +1,20 @@
-"""
-RQ Worker — processes submissions asynchronously.
-
-Run with:  rq worker submissions --url redis://localhost:6379/0
-Or:        python worker.py
-"""
-
 import logging
-import asyncio
 from uuid import UUID
 from datetime import datetime, timezone
 
-from core.config import settings
-from db.session import AsyncSessionLocal
-from db.repository.languages import get_language
-from db.repository.submissions import get_submission_by_token
-from schema import Submission, SubmissionLanguage, Status
+from db.session import SyncSessionLocal
+from db.repository.sync_queries import get_submission_by_token_sync, get_language_sync
+from job.schema import Submission, SubmissionLanguage, Status
 from job.isolate_job import IsolateJob
+from .celery import app
 
 logger = logging.getLogger(__name__)
 
 
-async def async_process_submission(submission_token: str) -> None:
+@app.task
+def process_submission(submission_token: str) -> None:
     """
-    Main task function invoked by the RQ worker.
+    Main task function invoked by the Celery worker.
 
     1. Loads the submission from PostgreSQL.
     2. Builds the internal Submission schema and IsolateJob.
@@ -32,23 +24,23 @@ async def async_process_submission(submission_token: str) -> None:
     token = UUID(submission_token)
 
     try:
-        async with AsyncSessionLocal() as db:
-            row = await get_submission_by_token(db, token)
+        with SyncSessionLocal() as db:
+            row = get_submission_by_token_sync(db, token)
 
             if row is None:
                 logger.error("Submission %s not found", token)
                 return
 
-            language = await get_language(db, row.language_id)
+            language = get_language_sync(db, row.language_id)
             if language is None:
-                row.status = Status.boxerr.value["value"]
+                row.status = Status.boxerr.value
                 row.message = f"Unsupported language_id: {row.language_id}"
-                await db.commit()
+                db.commit()
                 return
 
             # Mark as processing
-            row.status = Status.process.value["value"]
-            await db.commit()
+            row.status = Status.process.value
+            db.commit()
 
             # Build internal schema
             submission = Submission(
@@ -73,7 +65,7 @@ async def async_process_submission(submission_token: str) -> None:
             job.run_job()
 
             # Write results back
-            row.status = submission.status.value["value"]
+            row.status = submission.status.value
             row.stdout = submission.stdout
             row.stderr = submission.stderr
             row.compile_output = submission.compile_output
@@ -85,31 +77,18 @@ async def async_process_submission(submission_token: str) -> None:
             row.message = submission.message
             row.finished_at = datetime.now(timezone.utc)
 
-            await db.commit()
+            db.commit()
             logger.info("Submission %s processed → %s", token, row.status)
 
     except Exception:
         logger.exception("Failed to process submission %s", token)
-        # Mark as internal error
-        if row:
-            row.status = Status.boxerr.value["value"]
-            row.message = "Internal worker error"
-            await db.commit()
-
-
-def process_submission(submission_token: str) -> None:
-    asyncio.run(async_process_submission(submission_token))
-
-
-# ---------------------------------------------------------------------------
-# Entry point — run as standalone worker
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    from redis import Redis
-    from rq import Worker
-
-    logging.basicConfig(level=logging.INFO)
-
-    conn = Redis.from_url(settings.REDIS_URL)
-    worker = Worker([settings.REDIS_QUEUE_NAME], connection=conn)
-    worker.work()
+        # Mark as internal error using a fresh session
+        try:
+            with SyncSessionLocal() as db:
+                err_row = get_submission_by_token_sync(db, token)
+                if err_row is not None:
+                    err_row.status = Status.boxerr.value
+                    err_row.message = "Internal worker error"
+                    db.commit()
+        except Exception:
+            logger.exception("Failed to mark submission %s as errored", token)

@@ -3,10 +3,8 @@ Code Execution Sandbox — FastAPI application.
 """
 
 from fastapi import FastAPI
-
-from routes.submissions import router as submissions_router
-from routes.languages import router as languages_router
-from core.config import settings
+from routes import api_router
+from config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -15,10 +13,4 @@ app = FastAPI(
 )
 
 
-@app.get(f"{settings.API_V1_STR}/health", tags=["Health"])
-async def health():
-    return {"status": "ok"}
-
-
-app.include_router(languages_router, prefix=settings.API_V1_STR)
-app.include_router(submissions_router, prefix=settings.API_V1_STR)
+app.include_router(api_router)

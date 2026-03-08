@@ -26,6 +26,8 @@ async def get_language(db: AsyncSession, language_id: int) -> Language | None:
 
 async def get_languages(db: AsyncSession) -> list[Language]:
     result = await db.execute(
-        select(Language).where(Language.is_archived is not True).order_by(Language.name)
+        select(Language)
+        .where(Language.is_archived.is_not(True))
+        .order_by(Language.name)
     )
     return list(result.scalars().all())

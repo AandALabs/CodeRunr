@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import pool
 from alembic import context
 
-from db.session import Base, create_db_url
+from db.session import Base, _build_url
 import db.models  # noqa: F401 — registers all models on Base.metadata
 
 # this is the Alembic Config object, which provides
@@ -22,7 +22,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Set the DB URL (uses postgresql+asyncpg)
-config.set_main_option("sqlalchemy.url", create_db_url())
+config.set_main_option("sqlalchemy.url", _build_url("postgresql+asyncpg"))
 
 
 def run_migrations_offline() -> None:
@@ -58,7 +58,7 @@ def do_run_migrations(connection):
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode using async engine."""
     connectable = create_async_engine(
-        create_db_url(),
+        _build_url("postgresql+asyncpg"),
         poolclass=pool.NullPool,
     )
 

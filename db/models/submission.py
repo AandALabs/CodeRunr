@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import (
     Column,
@@ -55,7 +55,7 @@ class Submission(Base):
 
     # Timestamps
     created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(datetime.UTC)
     )
     finished_at = Column(DateTime(timezone=True), nullable=True)
 

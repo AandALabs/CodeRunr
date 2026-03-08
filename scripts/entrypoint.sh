@@ -33,8 +33,8 @@ case "${SERVICE_MODE:-api}" in
         exec uv run uvicorn main:app --host 0.0.0.0 --port 8000
         ;;
     worker)
-        echo "Starting RQ worker..."
-        exec uv run python worker.py
+        echo "Starting Celery worker..."
+        exec uv run celery --app=worker.celery worker --loglevel=INFO
         ;;
     *)
         echo "Unknown SERVICE_MODE: ${SERVICE_MODE}"
