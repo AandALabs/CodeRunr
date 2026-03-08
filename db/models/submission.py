@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
     Column,
@@ -13,6 +12,8 @@ from sqlalchemy import (
     Uuid,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from db.base import Base
 
 
@@ -54,10 +55,9 @@ class Submission(Base):
     enable_per_process_and_thread_memory_limit = Column(Boolean, default=True)
 
     # Timestamps
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(datetime.UTC)
-    )
-    finished_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
+    finished_at = Column(DateTime, nullable=True)
 
     # Batch relationship (nullable — standalone submissions have no batch)
     batch_token = Column(Uuid, ForeignKey("submission_batches.token"), nullable=True)
