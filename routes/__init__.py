@@ -8,7 +8,7 @@ from .languages import router as languages_router
 api_router = APIRouter(prefix=settings.API_V1_STR)
 
 
-@api_router.get(f"{settings.API_V1_STR}/health", tags=["Health"])
+@api_router.get("/health", tags=["Health"])
 async def health():
     return {"status": "ok"}
 

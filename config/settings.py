@@ -5,7 +5,7 @@ from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Code Judge"
+    PROJECT_NAME: str = "CodeRunr"
     BASE_DIR: Path = Path(__file__).parent.parent
     API_V1_STR: str = "/api/v1"
 

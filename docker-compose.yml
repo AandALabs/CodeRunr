@@ -1,26 +1,26 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: sandbox
       POSTGRES_PASSWORD: sandbox
-      POSTGRES_DB: code_sandbox
+      POSTGRES_DB: coderunr
     ports:
-      - "5432:5432"
+      - 5432:5432
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sandbox -d code_sandbox"]
+      test: ["CMD-SHELL", "pg_isready -U sandbox -d coderunr"]
       interval: 5s
       timeout: 3s
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - 6379:6379
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -30,16 +30,16 @@ services:
   api:
     build: .
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     environment:
       SERVICE_MODE: api
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_USER: sandbox
       POSTGRES_PASSWORD: sandbox
-      POSTGRES_DB: code_sandbox
+      POSTGRES_DB: coderunr
       REDIS_URL: redis://redis:6379/0
+    ports:
+      - 8080:8000
     depends_on:
       db:
         condition: service_healthy
@@ -49,24 +49,24 @@ services:
   worker:
     build: .
     restart: unless-stopped
-    privileged: true
-    cap_add:
-      - SYS_ADMIN
-      - SYS_PTRACE
-      - NET_ADMIN
-      - SYS_RESOURCE
-    security_opt:
-      - seccomp:unconfined
-      - apparmor:unconfined
-    cgroup: host
     environment:
       SERVICE_MODE: worker
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       POSTGRES_USER: sandbox
       POSTGRES_PASSWORD: sandbox
-      POSTGRES_DB: code_sandbox
+      POSTGRES_DB: coderunr
       REDIS_URL: redis://redis:6379/0
+    privileged: true
+    cap_add: 
+      - SYS_ADMIN
+      - SYS_PTRACE
+      - NET_ADMIN
+      - SYS_RESOURCE
+    security_opt: 
+      - seccomp:unconfined
+      - apparmor:unconfined
+    cgroup: host
     tmpfs:
       - /tmp:exec,size=512M
     depends_on:
