@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN npm install -g typescript
 
 # Build & install isolate
-RUN git clone https://github.com/ioi/isolate.git /tmp/isolate \
+RUN git clone https://github.com/ioi/isolate.git --branch v2.2 /tmp/isolate \
     && cd /tmp/isolate \
     && make -j$(nproc) isolate isolate-cg-keeper \
     && cp isolate /usr/local/bin/ \
