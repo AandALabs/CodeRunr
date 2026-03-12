@@ -122,7 +122,7 @@ async def create_submission_batch(
                 max_processes_and_or_threads=data.max_processes_and_or_threads,
                 limit_per_process_and_thread_time_usages=data.limit_per_process_and_thread_time_usages,
                 limit_per_process_and_thread_memory_usgaes=data.limit_per_process_and_thread_memory_usgaes,
-                batch_token=batch.token,
+                batch_id=batch.id,
             )
             submissions.append(sub)
 
