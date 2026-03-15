@@ -9,11 +9,11 @@ class SandboxConfig(BaseModel):
     """Max Stack limit in KB"""
     MAX_MEMORY_LIMIT: int = 256 * 1024
     """Max memory limit in KB"""
-    MAX_CPU_TIME_LIMIT: float = 10
+    MAX_CPU_TIME_LIMIT: float = 30
     """Max CPU time limit in seconds"""
-    MAX_WALL_TIME_LIMIT: float = 20
+    MAX_WALL_TIME_LIMIT: float = 30
     """Max wall time limit in seconds"""
-    MAX_MAX_FILE_SIZE: int = 10 * 1024
+    MAX_MAX_FILE_SIZE: int = 50 * 1024
     """Max file size in KB"""
     MAX_MAX_PROCESSES_AND_OR_THREADS: int = 64
     """Max number of process and threads"""
