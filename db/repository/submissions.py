@@ -15,6 +15,7 @@ async def create_submission(db: AsyncSession, data: SubmissionCreate) -> Submiss
     """
     try:
         submission = Submission(
+            token=data.token,
             source_code=data.source_code,
             language_id=data.language_id,
             stdin=data.stdin,
