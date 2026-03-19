@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class SubmissionCreate(BaseModel):
+    token: Optional[UUID] = None
     source_code: str
     language_id: int
     stdin: Optional[str] = None
