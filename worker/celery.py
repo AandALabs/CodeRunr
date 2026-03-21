@@ -1,5 +1,7 @@
 from celery import Celery
-from config import settings
+from celery.signals import worker_process_init
+
+from config import settings, configure_logger
 
 app = Celery(
     "worker",
@@ -18,6 +20,11 @@ app = Celery(
     timezone="Asia/Kolkata",
     enable_utc=True,
 )
+
+
+@worker_process_init.connect
+def setup_worker_logging(**_: object) -> None:
+    configure_logger()
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,6 +25,17 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     API_V1_STR: str = "/api/v1"
 
+    # Logging and monitoring
+    LOG_LEVEL: str = (
+        "DEBUG" if os.getenv("ENVIRONMENT", "?") == "development" else "INFO"
+    )
+    LOG_DIR: Path = BASE_DIR / "logs"
+    LOG_FILE_NAME: str = "file.log"
+    LOG_TO_FILE: bool = True
+    LOG_ROTATION: str = "1 MB"
+    LOG_RETENTION: str = "10 days"
+    LOG_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+
     NON_AUTH_PATHS: list[str] = ["/docs", "/openapi.json", "/api/v1/health"]
 
     # DATABASE
@@ -38,7 +50,9 @@ class Settings(BaseSettings):
 
     # Sandbox settings
     sanbox: SandboxConfig = SandboxConfig()
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, extra="ignore"
+    )
 
 
 settings = Settings()
