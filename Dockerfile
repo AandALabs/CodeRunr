@@ -65,8 +65,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY . .
 RUN uv sync --frozen --no-dev
 
-COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/entrypoint.sh /tmp/entrypoint.raw
+RUN tr -d '\r' < /tmp/entrypoint.raw > /entrypoint.sh \
+    && chmod +x /entrypoint.sh \
+    && rm /tmp/entrypoint.raw
 
 EXPOSE 8080
 
