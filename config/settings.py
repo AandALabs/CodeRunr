@@ -1,27 +1,28 @@
 import os
-from typing import Literal, TypeAlias
+import tomllib
 from pathlib import Path
+from typing import Literal, TypeAlias
 
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import BaseModel, SecretStr
 
 
 LogLevel: TypeAlias = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
 class SandboxConfig(BaseModel):
-    MAX_STACK_LIMIT: int = 64 * 1024
-    """Max Stack limit in KB"""
-    MAX_MEMORY_LIMIT: int = 256 * 1024
-    """Max memory limit in KB"""
-    MAX_CPU_TIME_LIMIT: float = 30
-    """Max CPU time limit in seconds"""
-    MAX_WALL_TIME_LIMIT: float = 30
-    """Max wall time limit in seconds"""
-    MAX_MAX_FILE_SIZE: int = 50 * 1024
-    """Max file size in KB"""
-    MAX_MAX_PROCESSES_AND_OR_THREADS: int = 64
-    """Max number of process and threads"""
+    MAX_STACK_LIMIT: int
+    MAX_MEMORY_LIMIT: int
+    MAX_CPU_TIME_LIMIT: float
+    MAX_WALL_TIME_LIMIT: float
+    MAX_MAX_FILE_SIZE: int
+    MAX_MAX_PROCESSES_AND_OR_THREADS: int
+
+
+def _load_sandbox_config() -> SandboxConfig:
+    config_path = Path(__file__).with_name("coderunr.toml")
+    with config_path.open("rb") as config_file:
+        return SandboxConfig(**tomllib.load(config_file))
 
 
 class Settings(BaseSettings):
@@ -40,6 +41,8 @@ class Settings(BaseSettings):
     LOG_RETENTION: str = "10 days"
     LOG_FORMAT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
 
+    # This auth token will be used to authenticate every client request
+    AUTH_TOKEN: str = "sk-proj-j37dSJD638SHkj3h62djwZgd36djk2862bfDjkGAjd"
     NON_AUTH_PATHS: list[str] = ["/docs", "/openapi.json", "/api/v1/health"]
 
     # DATABASE
@@ -61,9 +64,11 @@ class Settings(BaseSettings):
     HTTP_USER_AGENT: str = "CodeRunr/0.1.0"
 
     # Sandbox settings
-    sandbox: SandboxConfig = SandboxConfig()
+    sandbox: SandboxConfig = Field(default_factory=_load_sandbox_config)
     model_config = SettingsConfigDict(
-        env_file=".env", case_sensitive=True, extra="ignore"
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
     )
 
 
