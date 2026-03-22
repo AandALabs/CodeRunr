@@ -1,8 +1,8 @@
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.submission import Submission, SubmissionBatch
 from schema.submission import SubmissionCreate
@@ -27,8 +27,9 @@ async def create_submission(
             stack_limit=submission_create.stack_limit,
             max_file_size=submission_create.max_file_size,
             max_processes_and_or_threads=submission_create.max_processes_and_or_threads,
-            limit_per_process_and_thread_time_usages=submission_create.limit_per_process_and_thread_time_usages,
-            limit_per_process_and_thread_memory_usgaes=submission_create.limit_per_process_and_thread_memory_usgaes,
+            limit_per_process_and_thread_cpu_time_usages=submission_create.limit_per_process_and_thread_cpu_time_usages,
+            limit_per_process_and_thread_memory_usages=submission_create.limit_per_process_and_thread_memory_usages,
+            webhook_url=submission_create.webhook_url,
         )
 
         if submission_create.token:
@@ -125,8 +126,9 @@ async def create_submission_batch(
                 stack_limit=data.stack_limit,
                 max_file_size=data.max_file_size,
                 max_processes_and_or_threads=data.max_processes_and_or_threads,
-                limit_per_process_and_thread_time_usages=data.limit_per_process_and_thread_time_usages,
-                limit_per_process_and_thread_memory_usgaes=data.limit_per_process_and_thread_memory_usgaes,
+                limit_per_process_and_thread_cpu_time_usages=data.limit_per_process_and_thread_cpu_time_usages,
+                limit_per_process_and_thread_memory_usages=data.limit_per_process_and_thread_memory_usages,
+                webhook_url=data.webhook_url,
                 batch_id=batch.id,
             )
             if data.token:

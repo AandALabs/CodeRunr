@@ -1,8 +1,12 @@
 import os
+from typing import Literal, TypeAlias
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel, SecretStr
+
+
+LogLevel: TypeAlias = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
 class SandboxConfig(BaseModel):
@@ -26,7 +30,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Logging and monitoring
-    LOG_LEVEL: str = (
+    LOG_LEVEL: LogLevel = (
         "DEBUG" if os.getenv("ENVIRONMENT", "?") == "development" else "INFO"
     )
     LOG_DIR: Path = BASE_DIR / "logs"
@@ -48,8 +52,16 @@ class Settings(BaseSettings):
     # QUEUE (Redis)
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Outbound HTTP
+    HTTP_TIMEOUT: float = 10.0
+    HTTP_CONNECT_TIMEOUT: float = 5.0
+    HTTP_MAX_CONNECTIONS: int = 100
+    HTTP_MAX_KEEPALIVE_CONNECTIONS: int = 20
+    HTTP_FOLLOW_REDIRECTS: bool = True
+    HTTP_USER_AGENT: str = "CodeRunr/0.1.0"
+
     # Sandbox settings
-    sanbox: SandboxConfig = SandboxConfig()
+    sandbox: SandboxConfig = SandboxConfig()
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )

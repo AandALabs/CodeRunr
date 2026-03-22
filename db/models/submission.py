@@ -65,12 +65,15 @@ class Submission(Base):
     stack_limit: Mapped[int] = mapped_column(default=64 * 1024)
     max_file_size: Mapped[int] = mapped_column(default=1 * 1024)
     max_processes_and_or_threads: Mapped[int] = mapped_column(default=64)
-    limit_per_process_and_thread_time_usages: Mapped[bool] = mapped_column(
+    limit_per_process_and_thread_cpu_time_usages: Mapped[bool] = mapped_column(
         default=False
     )
-    limit_per_process_and_thread_memory_usgaes: Mapped[bool] = mapped_column(
+    limit_per_process_and_thread_memory_usages: Mapped[bool] = mapped_column(
         default=False
     )
+
+    # Webhook url
+    webhook_url: Mapped[Optional[str]] = mapped_column(String(500))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

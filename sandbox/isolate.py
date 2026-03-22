@@ -3,12 +3,12 @@ import subprocess
 from pathlib import Path
 
 from config import settings
-from .schema import Status, Submission
+from .schema import SandboxSubmissionStatus, SandboxSubmission
 
 
-class IsolateCodeSanbox:
+class IsolateCodeSandbox:
     """
-    IsolateCodeSanbox is a class that is used to run the code in a sandbox.
+    IsolateCodeSandbox is a class that is used to run the code in a sandbox.
     """
 
     STDIN_FILE_NAME = "stdin.txt"
@@ -16,7 +16,7 @@ class IsolateCodeSanbox:
     STDERR_FILE_NAME = "stderr.txt"
     METADATA_FILE_NAME = "metadata.txt"
 
-    def __init__(self, submission: Submission):
+    def __init__(self, submission: SandboxSubmission):
         self.submission = submission
         self.box_id = submission.id % 999999
 
@@ -24,8 +24,8 @@ class IsolateCodeSanbox:
         self.cgroups = (
             "--cg"
             if (
-                not submission.limit_per_process_and_thread_time_usages
-                or not submission.limit_per_process_and_thread_memory_usgaes
+                not submission.limit_per_process_and_thread_cpu_time_usages
+                or not submission.limit_per_process_and_thread_memory_usages
             )
             else ""
         )
@@ -38,7 +38,7 @@ class IsolateCodeSanbox:
             self.run_code()  # Run the code
             self.verify_result()
         else:
-            self.submission.status = Status.comerr
+            self.submission.status = SandboxSubmissionStatus.comerr
 
         self.do_cleanup()
 
@@ -105,17 +105,17 @@ class IsolateCodeSanbox:
             shell=True,
         )
 
-        cg_memeory = (
-            f"--mem={settings.sanbox.MAX_MEMORY_LIMIT}"
-            if self.submission.limit_per_process_and_thread_memory_usgaes
-            else f"--cg-mem={settings.sanbox.MAX_MEMORY_LIMIT}"
+        cg_memory = (
+            f"--mem={settings.sandbox.MAX_MEMORY_LIMIT}"
+            if self.submission.limit_per_process_and_thread_memory_usages
+            else f"--cg-mem={settings.sandbox.MAX_MEMORY_LIMIT}"
         )
 
         command = f"""isolate {self.cgroups} --silent --box-id={self.box_id} \\
             --meta={self.metadata_file} --stdin=/dev/null --stderr-to-stdout  \\
-            --time={settings.sanbox.MAX_CPU_TIME_LIMIT} --extra-time=0 --wall-time={settings.sanbox.MAX_WALL_TIME_LIMIT} \\
-            --stack={settings.sanbox.MAX_STACK_LIMIT} --processes={settings.sanbox.MAX_MAX_PROCESSES_AND_OR_THREADS} \\
-            --fsize={settings.sanbox.MAX_MAX_FILE_SIZE} {cg_memeory} \\
+            --time={settings.sandbox.MAX_CPU_TIME_LIMIT} --extra-time=0 --wall-time={settings.sandbox.MAX_WALL_TIME_LIMIT} \\
+            --stack={settings.sandbox.MAX_STACK_LIMIT} --processes={settings.sandbox.MAX_MAX_PROCESSES_AND_OR_THREADS} \\
+            --fsize={settings.sandbox.MAX_MAX_FILE_SIZE} {cg_memory} \\
             --env=HOME=/tmp --env=PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \\
             --env=NODE_PATH=/usr/local/lib/node_modules \\
             --dir=/etc:noexec --run -- /bin/bash {compile_script.name} > {compile_output_file}
@@ -139,13 +139,13 @@ class IsolateCodeSanbox:
         with open(run_script, "w") as f:
             f.write(self.submission.language.run_cmd)
 
-        cg_memeory = (
+        cg_memory = (
             f"--mem={self.submission.memory_limit}"
-            if self.submission.limit_per_process_and_thread_memory_usgaes
+            if self.submission.limit_per_process_and_thread_memory_usages
             else f"--cg-mem={self.submission.memory_limit}"
         )
 
-        command = f"""isolate {self.cgroups} {cg_memeory} --silent --box-id={self.box_id} \\
+        command = f"""isolate {self.cgroups} {cg_memory} --silent --box-id={self.box_id} \\
             --meta={self.metadata_file} \\
             --time={self.submission.cpu_time_limit} --extra-time={self.submission.cpu_extra_time} \\
             --wall-time={self.submission.wall_time_limit} --stack={self.submission.stack_limit} \\
@@ -188,45 +188,45 @@ class IsolateCodeSanbox:
 
     def extract_status(self, status: str, exitsig: int):
         if status == "TO":
-            return Status.tle
+            return SandboxSubmissionStatus.tle
         elif status == "SG":
             status_code = exitsig
             if status_code == 11:
-                return Status.sigsegv
+                return SandboxSubmissionStatus.sigsegv
             elif status_code == 25:
-                return Status.sigxfsz
+                return SandboxSubmissionStatus.sigxfsz
             elif status_code == 8:
-                return Status.sigfpe
+                return SandboxSubmissionStatus.sigfpe
             elif status_code == 6:
-                return Status.sigabrt
+                return SandboxSubmissionStatus.sigabrt
             elif status_code == 9:
-                return Status.mle
+                return SandboxSubmissionStatus.mle
             else:
-                return Status.other
+                return SandboxSubmissionStatus.other
         elif status == "RE":
             std_err = self.submission.stderr
             if re.match(r"RecursionError: maximum recursion depth exceeded", std_err):
-                return Status.rf
+                return SandboxSubmissionStatus.rf
             else:
-                return Status.nzec
+                return SandboxSubmissionStatus.nzec
         elif status == "XX":
             message = self.submission.message
 
             if re.match(r"^execve\(.+\): Exec format error$", message):
-                return Status.exeerr
+                return SandboxSubmissionStatus.exeerr
             elif re.match(r"^execve\(.+\): No such file or directory$", message):
-                return Status.exeerr
+                return SandboxSubmissionStatus.exeerr
             elif re.match(r"^execve\(.+\): Permission denied$", message):
-                return Status.exeerr
+                return SandboxSubmissionStatus.exeerr
             else:
-                return Status.boxerr
+                return SandboxSubmissionStatus.boxerr
         elif (
             self.submission.expected_output
             and self.submission.stdout == self.submission.expected_output
         ):
-            return Status.acc
+            return SandboxSubmissionStatus.acc
         else:
-            return Status.wans
+            return SandboxSubmissionStatus.wans
 
     def do_cleanup(self):
         self.run_command(f"chown -R $(whoami): {self.boxdir}", shell=True)
