@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 1a1fa6239439
+Revision ID: 1d4763c75db6
 Revises: 
-Create Date: 2026-03-11 15:18:01.845648
+Create Date: 2026-03-22 12:23:28.550628
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '1a1fa6239439'
+revision: str = "1a1fa6239439"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -65,8 +65,9 @@ def upgrade() -> None:
     sa.Column('stack_limit', sa.Integer(), nullable=False),
     sa.Column('max_file_size', sa.Integer(), nullable=False),
     sa.Column('max_processes_and_or_threads', sa.Integer(), nullable=False),
-    sa.Column('limit_per_process_and_thread_time_usages', sa.Boolean(), nullable=False),
-    sa.Column('limit_per_process_and_thread_memory_usgaes', sa.Boolean(), nullable=False),
+    sa.Column('limit_per_process_and_thread_cpu_time_usages', sa.Boolean(), nullable=False),
+    sa.Column('limit_per_process_and_thread_memory_usages', sa.Boolean(), nullable=False),
+    sa.Column('webhook_url', sa.String(length=500), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('finished_at', sa.DateTime(), nullable=True),

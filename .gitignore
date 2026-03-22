@@ -12,3 +12,9 @@ wheels/
 # Env
 *.env
 .env.*
+
+#logs
+logs/
+
+# IDE
+.vscode
