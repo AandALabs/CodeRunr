@@ -22,6 +22,12 @@ def post_data_on_callback(callback_url: str, data: dict) -> None:
     response.raise_for_status()
 
 
+@sync_error_handler(name="post_data_on_callback")
+def post_data_on_callback(callback_url: str, data: dict) -> None:
+    response = get_sync_http().post(callback_url, json=data)
+    response.raise_for_status()
+
+
 @app.task
 def submit_submission_task(submission_token: str) -> str:
     """
