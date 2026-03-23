@@ -1,0 +1,17 @@
+FROM python:3.12-alpine
+
+WORKDIR /app
+
+# Install UV from docker image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy data
+COPY . . 
+RUN uv sync --frozen --no-dev
+
+COPY scripts/server.sh /server.sh
+RUN chmod +x /server.sh
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server.sh"]

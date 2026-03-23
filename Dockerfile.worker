@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     python3 \
     python3-pip \
-    python3-venv \
     nodejs \
     npm \
     default-jdk \
@@ -22,7 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libseccomp-dev \
     libsystemd-dev \
-    systemd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Typescript using npm
@@ -42,34 +40,24 @@ RUN chmod 4755 /usr/local/bin/isolate
 
 # Isolate configuration
 COPY config/isolate.conf /tmp/isolate.raw
-RUN tr -d '\r' < /tmp/isolate.raw > /usr/local/etc/isolate \
-    && sed -i 's/ *= */=/g' /usr/local/etc/isolate \
+RUN mkdir -p /usr/local/etc /var/local/lib/isolate /run/isolate/locks \
+    && tr -d '\r' < /tmp/isolate.raw > /usr/local/etc/isolate \
+    && chown root:root /var/local/lib/isolate /run/isolate /run/isolate/locks \
+    && chmod 0700 /var/local/lib/isolate /run/isolate /run/isolate/locks \
     && rm /tmp/isolate.raw
-
-# ── Kernel tuning for isolate ────────────────────────────────────────────
-# These are applied at container runtime via docker-compose privileged mode.
-# Swap off + protected_hardlinks are configured in compose / host.
-
-# ── cgroup v2 setup ─────────────────────────────────────────────────────
-# Create the cgroup subtree isolate will use.  In a privileged container
-# with cgroup v2 mounted, this path is writable by root.
-RUN mkdir -p /sys/fs/cgroup/system.slice/isolate.scope 2>/dev/null || true
 
 
 FROM base AS app
 
 WORKDIR /app
 
+# Install UV from docker image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 COPY . .
 RUN uv sync --frozen --no-dev
 
-COPY scripts/entrypoint.sh /tmp/entrypoint.raw
-RUN tr -d '\r' < /tmp/entrypoint.raw > /entrypoint.sh \
-    && chmod +x /entrypoint.sh \
-    && rm /tmp/entrypoint.raw
+COPY scripts/worker.docker.sh /worker.docker.sh
+RUN chmod +x /worker.docker.sh
 
-EXPOSE 8080
-
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/worker.docker.sh"]
