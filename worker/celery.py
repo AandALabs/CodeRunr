@@ -37,10 +37,5 @@ def setup_worker_logging(**_: object) -> None:
     configure_logger()
 
 
-@worker_process_init.connect
-def setup_worker_logging(**_: object) -> None:
-    configure_logger()
-
-
 if __name__ == "__main__":
     app.start()
