@@ -43,13 +43,6 @@ def submit_submission_task(submission_token: str) -> str:
                 return f"Submission failed {token}"
 
             language = get_language_sync(db, submission_record.language_id)
-            if language is None:
-                submission_record.status = SandboxSubmissionStatus.boxerr.value
-                submission_record.message = (
-                    f"Unsupported language_id: {submission_record.language_id}"
-                )
-                db.commit()
-                return f"Submission failed {token}"
 
             # Mark as processing
             submission_record.status = SandboxSubmissionStatus.process.value
