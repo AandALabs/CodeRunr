@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Literal, TypeAlias, Any
 
@@ -20,12 +19,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Logging and monitoring
-    LOG_LEVEL: LOG_LEVEL_TYPES = (
-        "DEBUG" if os.getenv("ENVIRONMENT", "?") == "development" else "INFO"
-    )
+    LOG_LEVEL: LOG_LEVEL_TYPES = "WARNING"
     LOG_DIR: Path = BASE_DIR / "logs"
     LOG_FILE_NAME: str = "file.log"
-    LOG_TO_FILE: bool = True
+    LOG_TO_FILE: bool = False
     LOG_ROTATION: str = "1 MB"
     LOG_RETENTION: str = "10 days"
     LOG_FORMAT: str = LOG_FORMAT_STR
