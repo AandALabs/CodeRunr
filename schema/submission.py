@@ -1,8 +1,20 @@
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Annotated
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, AfterValidator
+
+
+def validate_string_size_in_kb(v: str) -> str:
+    MAX_SIZE_BYTES = 100 * 1024  # 100KB
+    if len(v.encode("utf-8")) > MAX_SIZE_BYTES:
+        raise ValueError(
+            f"String size exceeds the maximum allowed of {MAX_SIZE_BYTES / 1024:.0f} KB"
+        )
+    return v
+
+
+KbString = Annotated[str, AfterValidator(validate_string_size_in_kb)]
 
 
 class SubmissionCreate(BaseModel):
@@ -10,13 +22,13 @@ class SubmissionCreate(BaseModel):
 
     token: Optional[UUID] = None
     """Optional UUID token provided by client"""
-    source_code: str
+    source_code: KbString
     """Source code that will be executed"""
     language_id: int
     """Valid language id"""
-    stdin: Optional[str] = None
+    stdin: Optional[KbString] = None
     """Optional stdin for program as input"""
-    expected_output: Optional[str] = None
+    expected_output: Optional[KbString] = None
     """Expected output if or not stdin provided"""
     cpu_time_limit: float = Field(default=1, ge=0.1, le=15)
     """Max cpu time boundary to run the program, if exceeded, program will exited with non-zero status code"""
