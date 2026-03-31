@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.submission import Submission, SubmissionBatch
@@ -41,7 +42,7 @@ async def create_submission(
         await db.commit()
         await db.refresh(submission)
         return submission
-    except Exception:
+    except SQLAlchemyError:
         await db.rollback()
         raise
 
@@ -142,7 +143,7 @@ async def create_submission_batch(
         await db.commit()
         await db.refresh(batch)
         return batch
-    except Exception:
+    except SQLAlchemyError:
         await db.rollback()
         raise
 

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from schema import APIResponse
 from routes import api_router
@@ -56,6 +57,13 @@ def get_cors_middleware_options() -> dict[str, Any]:
         "allow_headers": settings.CORS_CONFIG.ALLOWED_HEADERS,
         "max_age": settings.CORS_CONFIG.MAX_AGE,
     }
+
+
+@app.exception_handler(IntegrityError)
+async def database_integrity_error_handler(request: Request, exc: IntegrityError):
+    logger.error(exc)
+    api_response = APIResponse[None](status="Error", message="Database integrity error")
+    return JSONResponse(status_code=409, content=api_response.model_dump())
 
 
 @app.exception_handler(RequestValidationError)

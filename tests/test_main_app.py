@@ -1,17 +1,20 @@
 import asyncio
+import json
 
 import pytest
 from fastapi.testclient import TestClient
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 import main as main_module
 from config import settings
 from config.settings import CORSConfig
 from utils import http_util
 from main import (
+    database_integrity_error_handler,
     get_cors_middleware_options,
     handle_exception,
     handle_http_exception,
@@ -75,12 +78,38 @@ class TestMainApp:
         """Check exception handlers"""
         exception_handlers = client.app.exception_handlers
 
+        assert exception_handlers[IntegrityError] is database_integrity_error_handler
         assert (
             exception_handlers[RequestValidationError] is validation_exception_handler
         )
         assert exception_handlers[ValidationError] is pydantic_validation_handler
         assert exception_handlers[HTTPException] is handle_http_exception
         assert exception_handlers[Exception] is handle_exception
+
+    def test_database_integrity_error_handler_returns_sanitized_conflict(self):
+        """Integrity errors should return a sanitized conflict response."""
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+            }
+        )
+        exc = IntegrityError(
+            statement="INSERT INTO languages ...",
+            params={"name": "python"},
+            orig=Exception("duplicate key value violates unique constraint"),
+        )
+
+        response = asyncio.run(database_integrity_error_handler(request, exc))
+
+        assert response.status_code == 409
+        assert json.loads(response.body) == {
+            "status": "Error",
+            "message": "Database integrity error",
+            "data": None,
+        }
 
     def test_has_cors_middleware(self, client: TestClient):
         """Check CORS middleware"""
