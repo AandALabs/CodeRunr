@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from schema import APIResponse
 from routes import api_router
@@ -38,6 +39,31 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
 )
+
+
+def get_cors_middleware_options() -> dict[str, Any]:
+    allow_origins = settings.CORS_CONFIG.ALLOW_ORIGINS
+    allow_credentials = settings.CORS_CONFIG.ALLOW_CREDENTIALS
+
+    if "*" in allow_origins and allow_credentials:
+        raise ValueError(
+            "CORS misconfiguration: wildcard origins cannot be used with credentials enabled."
+        )
+
+    return {
+        "allow_origins": allow_origins,
+        "allow_credentials": allow_credentials,
+        "allow_methods": settings.CORS_CONFIG.ALLOWED_METHODS,
+        "allow_headers": settings.CORS_CONFIG.ALLOWED_HEADERS,
+        "max_age": settings.CORS_CONFIG.MAX_AGE,
+    }
+
+
+@app.exception_handler(IntegrityError)
+async def database_integrity_error_handler(request: Request, exc: IntegrityError):
+    logger.error(exc)
+    api_response = APIResponse[None](status="Error", message="Database integrity error")
+    return JSONResponse(status_code=409, content=api_response.model_dump())
 
 
 @app.exception_handler(RequestValidationError)
@@ -76,10 +102,7 @@ def handle_exception(request: Request, exc: Exception):
 """CORS middleware"""
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    **get_cors_middleware_options(),
 )
 
 """Include the main api_router, this router will expose all the API endpoints"""

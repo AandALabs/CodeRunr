@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import Literal, TypeAlias, Any
+from typing import Literal, TypeAlias, Any, List
 
 from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,6 +11,28 @@ LOG_LEVEL_TYPES: TypeAlias = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITI
 LOG_FORMAT_STR = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
 
 
+class CORSConfig(BaseSettings):
+    ALLOW_ORIGINS: List[str] = Field(default_factory=lambda: ["*"])
+    ALLOW_CREDENTIALS: bool = False
+    ALLOWED_METHODS: List[str] = Field(
+        default_factory=lambda: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    )
+    ALLOWED_HEADERS: List[str] = Field(
+        default_factory=lambda: [
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "Origin",
+            "X-API-Key",
+        ]
+    )
+    MAX_AGE: int = 600
+
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, extra="ignore", env_prefix="CORS_"
+    )
+
+
 class Settings(BaseSettings):
     """All application level settings can be defined here"""
 
@@ -19,13 +40,14 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     API_V1_STR: str = "/api/v1"
 
+    # CORS
+    CORS_CONFIG: CORSConfig = CORSConfig()
+
     # Logging and monitoring
-    LOG_LEVEL: LOG_LEVEL_TYPES = (
-        "DEBUG" if os.getenv("ENVIRONMENT", "?") == "development" else "INFO"
-    )
+    LOG_LEVEL: LOG_LEVEL_TYPES = "WARNING"
     LOG_DIR: Path = BASE_DIR / "logs"
     LOG_FILE_NAME: str = "file.log"
-    LOG_TO_FILE: bool = True
+    LOG_TO_FILE: bool = False
     LOG_ROTATION: str = "1 MB"
     LOG_RETENTION: str = "10 days"
     LOG_FORMAT: str = LOG_FORMAT_STR

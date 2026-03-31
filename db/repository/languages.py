@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.language import Language
@@ -16,18 +17,22 @@ async def create_language(db: AsyncSession, data: LanguageCreate) -> Language:
     Returns:
         Language: The created language.
     """
-    language = Language(
-        name=data.name,
-        version=data.version,
-        compile_cmd=data.compile_cmd,
-        run_cmd=data.run_cmd,
-        source_file=data.source_file,
-        is_archived=data.is_archived,
-    )
-    db.add(language)
-    await db.commit()
-    await db.refresh(language)
-    return language
+    try:
+        language = Language(
+            name=data.name,
+            version=data.version,
+            compile_cmd=data.compile_cmd,
+            run_cmd=data.run_cmd,
+            source_file=data.source_file,
+            is_archived=data.is_archived,
+        )
+        db.add(language)
+        await db.commit()
+        await db.refresh(language)
+        return language
+    except SQLAlchemyError:
+        await db.rollback()
+        raise
 
 
 async def get_language(db: AsyncSession, language_id: int) -> Language | None:

@@ -37,7 +37,7 @@ def configure_logger() -> None:
     if settings.LOG_TO_FILE:
         logger.add(
             log_file,
-            level=log_level,
+            level="ERROR",
             format=settings.LOG_FORMAT,
             rotation=settings.LOG_ROTATION,
             retention=settings.LOG_RETENTION,

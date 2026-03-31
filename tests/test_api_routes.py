@@ -192,6 +192,75 @@ class TestSubmissionRoute:
                 mock_submit_submission_task.delay.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_create_submission_with_large_source_code(
+        self, mock_submission_sample: Dict[str, Any], async_client: AsyncClient
+    ):
+        mock_submission_sample["source_code"] = "a" * (100 * 1024 + 1)
+
+        with patch("routes.submissions.create_submission") as mock_create_submission:
+            with patch(
+                "routes.submissions.submit_submission_task"
+            ) as mock_submit_submission_task:
+                mock_submit_submission_task.delay = MagicMock()
+
+                response = await async_client.post(
+                    "/api/v1/submissions", json=mock_submission_sample
+                )
+                json_response = response.json()
+
+                assert response.status_code == 422
+                assert json_response["status"] == "Error"
+                assert json_response["message"] == "Validation Error"
+                mock_create_submission.assert_not_awaited()
+                mock_submit_submission_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_create_submission_with_large_source_stdin(
+        self, mock_submission_sample: Dict[str, Any], async_client: AsyncClient
+    ):
+        mock_submission_sample["stdin"] = "a" * (100 * 1024 + 1)
+
+        with patch("routes.submissions.create_submission") as mock_create_submission:
+            with patch(
+                "routes.submissions.submit_submission_task"
+            ) as mock_submit_submission_task:
+                mock_submit_submission_task.delay = MagicMock()
+
+                response = await async_client.post(
+                    "/api/v1/submissions", json=mock_submission_sample
+                )
+                json_response = response.json()
+
+                assert response.status_code == 422
+                assert json_response["status"] == "Error"
+                assert json_response["message"] == "Validation Error"
+                mock_create_submission.assert_not_awaited()
+                mock_submit_submission_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_create_submission_with_large_expected_output(
+        self, mock_submission_sample: Dict[str, Any], async_client: AsyncClient
+    ):
+        mock_submission_sample["expected_output"] = "a" * (100 * 1024 + 1)
+
+        with patch("routes.submissions.create_submission") as mock_create_submission:
+            with patch(
+                "routes.submissions.submit_submission_task"
+            ) as mock_submit_submission_task:
+                mock_submit_submission_task.delay = MagicMock()
+
+                response = await async_client.post(
+                    "/api/v1/submissions", json=mock_submission_sample
+                )
+                json_response = response.json()
+
+                assert response.status_code == 422
+                assert json_response["status"] == "Error"
+                assert json_response["message"] == "Validation Error"
+                mock_create_submission.assert_not_awaited()
+                mock_submit_submission_task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_submission_by_token_not_found(self, async_client: AsyncClient):
         token = str(uuid.uuid4())
 
