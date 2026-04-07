@@ -35,10 +35,6 @@ class CeleryConfig(BaseModel):
         default=True,
         description="Request broker-side publish confirmation when the selected transport supports it.",
     )
-    BROKER_TRANSPORT_QUEUE_NAME_PREFIX: str = Field(
-        default="celery-",
-        description="Prefix applied to SQS queues created or resolved by Celery.",
-    )
     TASK_SERIALIZER: str = Field(
         default="json",
         description="Serializer used for outbound task payloads.",
@@ -74,7 +70,6 @@ class CeleryConfig(BaseModel):
             },
             "polling_interval": self.BROKER_TRANSPORT_POLLING_INTERVAL_SECONDS,
             "confirm_publish": self.BROKER_TRANSPORT_CONFIRM_PUBLISH,
-            "queue_name_prefix": self.BROKER_TRANSPORT_QUEUE_NAME_PREFIX,
         }
 
     @property
