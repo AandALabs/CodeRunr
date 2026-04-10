@@ -3,7 +3,7 @@ name = "CodeRunr"
 version = "0.1.0"
 description = "CodeRunr: Code compilation and sandboxes"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.12.5",
     "sqlalchemy>=2.0.48",
