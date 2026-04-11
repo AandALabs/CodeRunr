@@ -1,64 +1,46 @@
 from typing import Any
-from pydantic import BaseModel, Field
+from kombu.utils.url import safequote
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from config.aws import aws_config
+from db.session import _build_url
 
 
-class CeleryConfig(BaseModel):
-    BROKER_URL: str = Field(description="Broker connection URL used by Celery workers.")
-    BACKEND_URL: str = Field(
-        description="Result backend connection URL used to store task states and results."
-    )
-    BROKER_CONNECTION_RETRY_ON_STARTUP: bool = Field(
-        default=True,
-        description="Retry broker connection during worker startup until the broker becomes available.",
-    )
-    BROKER_CONNECTION_MAX_RETRIES: int = Field(
-        default=50,
-        description="Maximum number of times Celery retries the initial broker connection before failing startup.",
-    )
-    BROKER_TRANSPORT_VISIBILITY_TIMEOUT_SECONDS: int = Field(
-        default=30,
-        description="How long a fetched message stays invisible to other workers before it can be redelivered.",
-    )
-    BROKER_TRANSPORT_MAX_RETRIES: int = Field(
-        default=10,
-        description="Maximum number of retry attempts performed by the broker transport for transient connection errors.",
-    )
-    BROKER_TRANSPORT_RETRY_TIMEOUT_SECONDS: float = Field(
-        default=5.0,
-        description="Socket timeout used by the broker client's retry policy.",
-    )
-    BROKER_TRANSPORT_POLLING_INTERVAL_SECONDS: float = Field(
-        default=0.5,
-        description="Delay between queue polling attempts when no messages are available.",
-    )
-    BROKER_TRANSPORT_CONFIRM_PUBLISH: bool = Field(
-        default=True,
-        description="Request broker-side publish confirmation when the selected transport supports it.",
-    )
-    TASK_SERIALIZER: str = Field(
-        default="json",
-        description="Serializer used for outbound task payloads.",
-    )
-    ACCEPT_CONTENT: list[str] = Field(
-        default_factory=lambda: ["json"],
-        description="List of accepted content types for inbound task payloads.",
-    )
-    RESULT_SERIALIZER: str = Field(
-        default="json",
-        description="Serializer used for task results stored in the backend.",
-    )
-    RESULT_EXPIRES: int = Field(
-        default=60 * 60 * 24,
-        description="How long task results remain in the backend before Celery considers them expired.",
-    )
-    TIMEZONE: str = Field(
-        default="Asia/Kolkata",
-        description="Application timezone used by Celery for scheduling and timestamps.",
-    )
-    ENABLE_UTC: bool = Field(
-        default=True,
-        description="Store and process Celery timestamps in UTC internally.",
-    )
+class CeleryConfig(BaseSettings):
+    BROKER_URL: str
+    """Broker connection URL used by Celery workers."""
+    BACKEND_URL: str
+    """Result backend connection URL used to store task states and results."""
+    BROKER_CONNECTION_RETRY_ON_STARTUP: bool = True
+    """Retry broker connection during worker startup until the broker becomes available."""
+    BROKER_CONNECTION_MAX_RETRIES: int = 50
+    """Maximum number of initial broker connection retries before startup fails."""
+    BROKER_TRANSPORT_VISIBILITY_TIMEOUT_SECONDS: int = 30
+    """Seconds a fetched message stays hidden before another worker can receive it."""
+    BROKER_TRANSPORT_MAX_RETRIES: int = 10
+    """Maximum broker transport retry attempts for transient connection errors."""
+    BROKER_TRANSPORT_RETRY_TIMEOUT_SECONDS: float = 5.0
+    """Socket timeout, in seconds, used by the broker client's retry policy."""
+    BROKER_TRANSPORT_POLLING_INTERVAL_SECONDS: float = 0.5
+    """Delay, in seconds, between queue polling attempts when no messages are available."""
+    BROKER_TRANSPORT_WALL_TIME_SECONDS_SECONDS: float = 15.0
+    """SQS long polling wait time, in seconds, used to reduce empty and false-empty ReceiveMessage responses."""
+    BROKER_TRANSPORT_AWS_REGION: str = aws_config.REGION
+    """AWS Region for SQS queue"""
+    BROKER_TRANSPORT_QUEUE_NAME_PREFIX: str = "CELERY_CODERUNR_"
+    """SQS queue name prefix used to create queue"""
+    TASK_SERIALIZER: str = "json"
+    """Serializer used for outbound task payloads."""
+    ACCEPT_CONTENT: list[str] = ["json"]
+    """Content types accepted for inbound task payloads."""
+    RESULT_SERIALIZER: str = "json"
+    """Serializer used for task results stored in the backend."""
+    RESULT_EXPIRES: int = 60 * 60 * 24
+    """Seconds task results remain in the backend before Celery expires them."""
+    TIMEZONE: str = "Asia/Kolkata"
+    """Application timezone used by Celery for schedules and timestamps."""
+    ENABLE_UTC: bool = True
+    """Whether Celery stores and processes timestamps in UTC internally."""
 
     @property
     def broker_transport_options(self) -> dict[str, Any]:
@@ -69,7 +51,9 @@ class CeleryConfig(BaseModel):
                 "timeout": self.BROKER_TRANSPORT_RETRY_TIMEOUT_SECONDS,
             },
             "polling_interval": self.BROKER_TRANSPORT_POLLING_INTERVAL_SECONDS,
-            "confirm_publish": self.BROKER_TRANSPORT_CONFIRM_PUBLISH,
+            "wait_time_seconds": self.BROKER_TRANSPORT_WALL_TIME_SECONDS_SECONDS,
+            "region": self.BROKER_TRANSPORT_AWS_REGION,
+            "queue_name_prefix": self.BROKER_TRANSPORT_QUEUE_NAME_PREFIX,
         }
 
     @property
@@ -87,3 +71,28 @@ class CeleryConfig(BaseModel):
             "timezone": self.TIMEZONE,
             "enable_utc": self.ENABLE_UTC,
         }
+
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, extra="ignore", env_prefix="CELERY_"
+    )
+
+
+def _create_broker_url() -> str:
+    AWS_ACCESS_KEY_ID = aws_config.ACCESS_KEY_ID.get_secret_value()
+    AWS_SECRET_ACCESS_KEY = aws_config.SECRET_ACCESS_KEY.get_secret_value()
+
+    # URL-encode ONLY for broker URL
+    aws_access_key_encoded = safequote(AWS_ACCESS_KEY_ID)
+    aws_secret_key_encoded = safequote(AWS_SECRET_ACCESS_KEY)
+
+    # Use encoded credentials in broker URL
+    return f"sqs://{aws_access_key_encoded}:{aws_secret_key_encoded}@"
+
+
+def _create_backend_url() -> str:
+    return _build_url("db+postgresql")
+
+
+celery_config = CeleryConfig(
+    BROKER_URL=_create_broker_url(), BACKEND_URL=_create_backend_url()
+)
