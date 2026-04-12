@@ -1,0 +1,17 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Install UV from docker image.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-emit-project --format requirements.txt --output-file requirements.txt \
+    && pip install --no-cache-dir --requirement requirements.txt --target "${LAMBDA_TASK_ROOT}" \
+    && rm requirements.txt
+
+COPY . .
+
+CMD ["lambda_handler.handler"]
