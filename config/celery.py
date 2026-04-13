@@ -18,7 +18,7 @@ class TransportOptions(BaseModel):
     """Seconds a fetched message stays hidden before another worker can receive it."""
     POLLING_INTERVAL_SECONDS: float = 0.5
     """Delay, in seconds, between queue polling attempts when no messages are available."""
-    WALL_TIME_SECONDS_SECONDS: float = 15.0
+    WALL_TIME_SECONDS: float = 15.0
     """SQS long polling wait time, in seconds, used to reduce empty and false-empty ReceiveMessage responses."""
     PREDEFINED_QUEUES: Dict = {
         aws_config.SQS_QUEUE_NAME: {
@@ -67,7 +67,7 @@ class CeleryConfig(BaseSettings):
                 "timeout": self.BROKER_TRANSPORT_OPTIONS.RETRY_TIMEOUT_SECONDS,
             },
             "polling_interval": self.BROKER_TRANSPORT_OPTIONS.POLLING_INTERVAL_SECONDS,
-            "wait_time_seconds": self.BROKER_TRANSPORT_OPTIONS.WALL_TIME_SECONDS_SECONDS,
+            "wait_time_seconds": self.BROKER_TRANSPORT_OPTIONS.WALL_TIME_SECONDS,
             "region": self.BROKER_TRANSPORT_OPTIONS.AWS_REGION,
             "predefined_queues": self.BROKER_TRANSPORT_OPTIONS.PREDEFINED_QUEUES,
         }
