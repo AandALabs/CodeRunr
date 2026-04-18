@@ -43,6 +43,16 @@ class CeleryConfig(BaseSettings):
     """Broker transport options"""
     TASK_DEFAULT_QUEUE: str = aws_config.SQS_QUEUE_NAME
     """Default Celery queue name, must be present in SQS predefined_queues."""
+    TASK_PUBLISH_RETRY: bool = True
+    """Retry task publishing when transient broker errors occur."""
+    TASK_PUBLISH_RETRY_MAX_RETRIES: int = 3
+    """Maximum retries attempted while publishing a task."""
+    TASK_PUBLISH_RETRY_INTERVAL_START_SECONDS: float = 0.0
+    """Initial delay between task publish retries."""
+    TASK_PUBLISH_RETRY_INTERVAL_STEP_SECONDS: float = 0.5
+    """Increment added between task publish retries."""
+    TASK_PUBLISH_RETRY_INTERVAL_MAX_SECONDS: float = 2.0
+    """Maximum delay between task publish retries."""
     TASK_SERIALIZER: str = "json"
     """Serializer used for outbound task payloads."""
     ACCEPT_CONTENT: list[str] = ["json"]
@@ -71,6 +81,15 @@ class CeleryConfig(BaseSettings):
         }
 
     @property
+    def task_publish_retry_policy(self) -> dict[str, Any]:
+        return {
+            "max_retries": self.TASK_PUBLISH_RETRY_MAX_RETRIES,
+            "interval_start": self.TASK_PUBLISH_RETRY_INTERVAL_START_SECONDS,
+            "interval_step": self.TASK_PUBLISH_RETRY_INTERVAL_STEP_SECONDS,
+            "interval_max": self.TASK_PUBLISH_RETRY_INTERVAL_MAX_SECONDS,
+        }
+
+    @property
     def celery_kwargs(self) -> dict[str, Any]:
         return {
             "backend": self.BACKEND_URL,
@@ -78,6 +97,8 @@ class CeleryConfig(BaseSettings):
             "broker_connection_retry_on_startup": self.BROKER_CONNECTION_RETRY_ON_STARTUP,
             "broker_connection_max_retries": self.BROKER_CONNECTION_MAX_RETRIES,
             "broker_transport_options": self.broker_transport_options,
+            "task_publish_retry": self.TASK_PUBLISH_RETRY,
+            "task_publish_retry_policy": self.task_publish_retry_policy,
             "task_default_queue": self.TASK_DEFAULT_QUEUE,
             "task_queues": (Queue(self.TASK_DEFAULT_QUEUE),),
             "task_serializer": self.TASK_SERIALIZER,
